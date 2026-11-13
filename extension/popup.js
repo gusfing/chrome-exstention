@@ -27,23 +27,21 @@ async function checkStatus() {
 }
 
 btnTestScreenshot.addEventListener('click', async () => {
-  log('Triggering active tab capture...');
+  log('Triggering active tab capture (Silent Mode)...');
   try {
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     if (!tab) return log('No active tab found.');
 
-    chrome.debugger.attach({ tabId: tab.id }, '1.3', () => {
+    chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, (dataUrl) => {
       if (chrome.runtime.lastError) {
-        return log('Debugger error: ' + chrome.runtime.lastError.message);
+        return log('Capture error: ' + chrome.runtime.lastError.message);
       }
-      chrome.debugger.sendCommand({ tabId: tab.id }, 'Page.captureScreenshot', { format: 'png' }, (result) => {
-        chrome.debugger.detach({ tabId: tab.id }, () => {});
-        if (result && result.data) {
-          log(`Captured! PNG size: ${(result.data.length * 0.75 / 1024).toFixed(1)} KB`);
-        } else {
-          log('Failed to capture screenshot.');
-        }
-      });
+      if (dataUrl) {
+        const kb = (dataUrl.length * 0.75 / 1024).toFixed(1);
+        log(`Captured silently! Size: ${kb} KB (Zero debug banner)`);
+      } else {
+        log('Failed to capture screenshot.');
+      }
     });
   } catch (err) {
     log('Error: ' + err.message);
@@ -58,4 +56,3 @@ btnListTabs.addEventListener('click', async () => {
 
 checkStatus();
 setInterval(checkStatus, 3000);
-
